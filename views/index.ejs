@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Booking</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <h1>Guest Booking</h1>
+    <a href="/bookings">View Bookings</a>
+    <a href="/check-availability">Check Availability</a>
+    <form action="/add-booking" method="POST">
+        <label for="room_id">Room ID:</label>
+        <input type="number" id="room_id" name="room_id" required>
+        <label for="guest_name">Guest Name:</label>
+        <input type="text" id="guest_name" name="guest_name" required>
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" required>
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" required>
+        <button type="submit">Add Booking</button>
+    </form>
+</body>
+</html>
