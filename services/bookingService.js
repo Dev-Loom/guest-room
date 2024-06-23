@@ -16,13 +16,13 @@ class BookingService {
         }
     }
 
-    async addBooking({ location, guest_name, start_date, end_date }) {
+    async addBooking({ location, guest_name, details, start_date, end_date }) {
         try {
             const room = await Room.findOne({ where: { name: location } });
             if (!room) {
                 throw new Error('Room not found');
             }
-            const booking = await Booking.create({ guest_name, start_date, end_date, room_id: room.id });
+            const booking = await Booking.create({ guest_name, details, start_date, end_date, room_id: room.id });
             return booking;
         } catch (error) {
             console.error('Failed to add booking:', error);

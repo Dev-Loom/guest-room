@@ -1,4 +1,4 @@
-const BookingService = require('../services/BookingService');
+const BookingService = require("../services/BookingService");
 
 class BookingController {
     async getBookings(req, res) {
@@ -13,9 +13,9 @@ class BookingController {
     }
 
     async addBooking(req, res) {
-        const { location, guest_name, start_date, end_date } = req.body;
+        const { location, guest_name, details, start_date, end_date } = req.body;
         try {
-            const booking = await BookingService.addBooking({ location, guest_name, start_date, end_date });
+            const booking = await BookingService.addBooking({ location, guest_name, details, start_date, end_date });
             res.status(201).json(booking);
         } catch (error) {
             console.error(error.message);

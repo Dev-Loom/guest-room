@@ -28,7 +28,7 @@
     }
     #calendar {
       max-width: 900px;
-      margin: 0 auto;
+      margin: 0 auto 20px;
     }
     .fc-event {
       background-color: #007bff !important;
@@ -37,6 +37,17 @@
     }
     .toast-container {
       z-index: 1055;
+    }
+    .disabled-booking {
+      color: #6c757d;
+    }
+    .current-booking {
+      font-weight: bold;
+      color: #000;
+    }
+    .booking-table {
+      max-width: 900px;
+      margin: 0 auto;
     }
   </style>
 </head>
@@ -53,6 +64,21 @@
       </select>
     </div>
     <div id="calendar"></div>
+    <br>
+    <h1 style="text-align: center;">Booking Details</h1>
+
+    <table class="table table-bordered booking-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Details</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+        </tr>
+      </thead>
+      <tbody id="bookingDetailsTableBody">
+      </tbody>
+    </table>
 
     <!-- Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
@@ -99,6 +125,10 @@
                 <input type="text" class="form-control" id="guestName" required>
               </div>
               <div class="mb-3">
+                <label for="details" class="form-label">Details</label>
+                <input type="text" class="form-control" id="details" required>
+              </div>
+              <div class="mb-3">
                 <label for="startDate" class="form-label">Start Date</label>
                 <input type="date" class="form-control" id="startDate" required>
               </div>
@@ -108,6 +138,28 @@
               </div>
               <button type="submit" class="btn btn-primary">Add Booking</button>
             </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Details Modal -->
+    <div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="bookingDetailsModalLabel">Booking Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p><strong>Name:</strong> <span id="modalGuestName"></span></p>
+            <p><strong>Details:</strong> <span id="modalDetails"></span></p>
+            <p><strong>Start Date:</strong> <span id="modalStartDate"></span></p>
+            <p><strong>End Date:</strong> <span id="modalEndDate"></span></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-danger" id="deleteBookingBtn">Delete Booking</button>
           </div>
         </div>
       </div>
@@ -175,6 +227,7 @@
           events = bookings.map(booking => ({
             id: booking.id,
             title: booking.guest_name,
+            details: booking.details,
             start: booking.start_date,
             end: booking.end_date
           }));
@@ -192,24 +245,46 @@
               start: new Date().toISOString().split("T")[0]
             },
             eventClick: function(info) {
-              if (confirm('Are you sure you want to delete this booking?')) {
-                fetch(`http://localhost:3000/cancelBooking/${info.event.id}`, {
-                  method: 'DELETE'
-                }).then(response => {
-                  if (response.ok) {
-                    info.event.remove();
-                    showToast('Booking deleted');
-                  } else {
-                    showToast('Failed to delete booking');
+              const bookingDetailsModal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+              // Set the booking details in the modal
+              document.getElementById('modalGuestName').textContent = info.event.title;
+              document.getElementById('modalDetails').textContent = info.event.extendedProps.details;
+              document.getElementById('modalStartDate').textContent = new Date(info.event.start).toLocaleDateString();
+              document.getElementById('modalEndDate').textContent = new Date(info.event.end).toLocaleDateString();
+
+              // Add event listener for delete button
+              document.getElementById('deleteBookingBtn').onclick = async function() {
+                if (confirm('Are you sure you want to delete this booking?')) {
+                  try {
+                    const response = await fetch(`http://localhost:3000/cancelBooking/${info.event.id}`, {
+                      method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                      info.event.remove();
+                      showToast('Booking deleted');
+                      removeBookingFromTable(info.event.id);
+                      bookingDetailsModal.hide();
+                    } else {
+                      showToast('Failed to delete booking');
+                    }
+                  } catch (error) {
+                    console.error('Error deleting booking:', error);
                   }
-                });
-              }
+                }
+              };
+
+              // Show the modal
+              bookingDetailsModal.show();
             },
             select: function(info) {
               const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
               document.getElementById('startDate').value = info.startStr;
               document.getElementById('endDate').value = info.endStr;
               bookingModal.show();
+            },
+            datesSet: function(info) {
+              updateBookingTable(events.filter(event => new Date(event.start) >= info.start && new Date(event.start) <= info.end));
             },
             eventContent: function(arg) {
               return {
@@ -219,6 +294,7 @@
           });
 
           calendar.render();
+          updateBookingTable(events.filter(event => new Date(event.start).getMonth() === new Date().getMonth()));
 
         } catch (error) {
           console.error('Error fetching bookings:', error);
@@ -230,6 +306,7 @@
       event.preventDefault();
 
       const guestName = document.getElementById('guestName').value;
+      const details = document.getElementById('details').value;
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
       const location = document.getElementById('location').value;
@@ -254,7 +331,7 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ guest_name: guestName, start_date: startDate, end_date: endDate, location })
+          body: JSON.stringify({ guest_name: guestName,details, start_date: startDate, end_date: endDate, location })
         });
 
         if (response.ok) {
@@ -262,12 +339,21 @@
           calendar.addEvent({
             id: newBooking.id,
             title: newBooking.guest_name,
+            details: newBooking.details,
+            start: newBooking.start_date,
+            end: newBooking.end_date
+          });
+          events.push({
+            id: newBooking.id,
+            title: newBooking.guest_name,
+            details: newBooking.details,
             start: newBooking.start_date,
             end: newBooking.end_date
           });
           const bookingModal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
           bookingModal.hide();
           showToast('Booking added');
+          updateBookingTable(events.filter(event => new Date(event.start).getMonth() === new Date(startDate).getMonth()));
         } else {
           showToast('Failed to add booking');
         }
@@ -275,6 +361,58 @@
         console.error('Error adding booking:', error);
       }
     });
+
+    function removeBookingFromTable(id) {
+      const tableBody = document.getElementById('bookingDetailsTableBody');
+      const rows = tableBody.getElementsByTagName('tr');
+      for (let row of rows) {
+        if (row.dataset.id === id) {
+          row.remove();
+          break;
+        }
+      }
+    }
+
+    function updateBookingTable(bookings) {
+  const tableBody = document.getElementById('bookingDetailsTableBody');
+  tableBody.innerHTML = '';
+  const currentDate = new Date();
+
+  bookings.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+  bookings.forEach(booking => {
+    const startDate = new Date(booking.start);
+    const endDate = new Date(booking.end);
+
+    const row = document.createElement('tr');
+    row.dataset.id = booking.id;
+    
+    const nameCell = document.createElement('td');
+    nameCell.textContent = booking.title;
+    row.appendChild(nameCell);
+
+    // New cell for details
+    const detailsCell = document.createElement('td'); 
+    detailsCell.textContent = booking.details; // Add this line
+    row.appendChild(detailsCell); // Add this line
+
+    const startCell = document.createElement('td');
+    startCell.textContent = startDate.toLocaleDateString();
+    row.appendChild(startCell);
+
+    const endCell = document.createElement('td');
+    endCell.textContent = endDate.toLocaleDateString();
+    row.appendChild(endCell);
+
+    if (startDate < currentDate && endDate < currentDate) {
+      row.classList.add('disabled-booking');
+    } else if (startDate <= currentDate && endDate >= currentDate) {
+      row.classList.add('current-booking');
+    }
+
+    tableBody.appendChild(row);
+  });
+}
 
     loadLocations();
   </script>
